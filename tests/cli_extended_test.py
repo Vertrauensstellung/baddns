@@ -6,50 +6,14 @@ from baddns.lib.errors import BadDNSCLIException, BadDNSSignatureException
 
 
 class TestPrintVersion:
-    def test_print_version_found(self, capsys, tmp_path, monkeypatch):
-        # Create a fake dist-info directory
-        dist_dir = tmp_path / "baddns-1.2.3.dist-info"
-        dist_dir.mkdir()
-
-        class FakePath:
-            def __init__(self, *a):
-                pass
-
-            @property
-            def parent(self):
-                return FakeParent()
-
-        class FakeParent:
-            @property
-            def parent(self):
-                return tmp_path
-
-            def glob(self, pattern):
-                return iter([dist_dir])
-
-        monkeypatch.setattr("baddns.cli.Path", FakePath)
+    def test_print_version_found(self, capsys, monkeypatch):
+        monkeypatch.setattr("importlib.metadata.version", lambda name: "1.2.3")
         cli.print_version()
         captured = capsys.readouterr()
         assert "1.2.3" in captured.out
 
-    def test_print_version_unknown(self, capsys, tmp_path, monkeypatch):
-        class FakePath:
-            def __init__(self, *a):
-                pass
-
-            @property
-            def parent(self):
-                return FakeParent()
-
-        class FakeParent:
-            @property
-            def parent(self):
-                return tmp_path
-
-            def glob(self, pattern):
-                return iter([])
-
-        monkeypatch.setattr("baddns.cli.Path", FakePath)
+    def test_print_version_unknown(self, capsys, monkeypatch):
+        monkeypatch.setattr("importlib.metadata.version", lambda name: (_ for _ in ()).throw(Exception("no package")))
         cli.print_version()
         captured = capsys.readouterr()
         assert "Unknown" in captured.out
