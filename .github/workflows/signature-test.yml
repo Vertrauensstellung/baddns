@@ -12,17 +12,16 @@ jobs:
   signature-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+        run: uv python install 3.10
 
       - name: Install dependencies
-        run: |
-          pip install poetry
-          poetry install
+        run: uv sync --group dev
 
       - name: Check for specific string in PR title and creator
         run: |
@@ -52,7 +51,7 @@ jobs:
           fi
 
           echo "Running signature test against: $FILE" >> signaturetest.log
-          OUTPUT=$(poetry run python3 baddns/scripts/signaturetest.py "$FILE" | jq .)
+          OUTPUT=$(uv run python3 baddns/scripts/signaturetest.py "$FILE" | jq .)
           echo "$OUTPUT" > output.json
           echo "Run finished with this output: $OUTPUT" >> signaturetest.log
           echo "SIGNATURE_TEST_RESULT=$OUTPUT" >> "$GITHUB_ENV"
@@ -87,7 +86,7 @@ jobs:
 
           if [[ "$match_table" != "{}" ]]; then
               comment+=$'\n\nMatch Table:\n\n| Domain | Match |\n| --- | --- |'
-              
+
               while IFS="|" read -r domain match; do
                   comment+=$'\n| '"$domain"' | '"$match"' |'
               done < <(echo "$match_table" | jq -r 'to_entries[] | "\(.key)|\(.value)"')
