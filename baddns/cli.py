@@ -8,7 +8,6 @@ import sys
 import asyncio
 import argparse
 import logging
-from pathlib import Path
 
 from blastdns import Client, get_system_resolvers
 
@@ -36,11 +35,11 @@ class CustomArgumentParser(argparse.ArgumentParser):
 
 def print_version():
     try:
-        base = Path(__file__).parent.parent
-        dist_info = next(base.glob("baddns-*.dist-info"))
-        version_str = dist_info.name.replace(".dist-info", "").split("-", 1)[1]
-    except StopIteration:
-        version_str = "Unknown (Running w/poetry?)"
+        from importlib.metadata import version
+
+        version_str = version("baddns")
+    except Exception:
+        version_str = "Unknown"
     print(f"Version - {version_str}\n")
 
 
