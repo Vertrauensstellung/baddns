@@ -35,6 +35,51 @@ class TestAResolve:
         result = await dw.a_resolve("ns.example.com")
         assert result is None
 
+    @pytest.mark.asyncio
+    async def test_a_resolve_with_glue(self):
+        mock_dns_manager = MagicMock()
+        mock_dns_manager.do_resolve = AsyncMock(return_value=["9.9.9.9"])
+        dw = DnsWalk(mock_dns_manager)
+        glue = {"ns.example.com": ["1.2.3.4", "5.6.7.8"]}
+        result = await dw.a_resolve("ns.example.com", glue=glue)
+        assert result == ["1.2.3.4", "5.6.7.8"]
+        # Should use glue, not call do_resolve
+        mock_dns_manager.do_resolve.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_a_resolve_with_glue_miss(self):
+        mock_dns_manager = MagicMock()
+        mock_dns_manager.do_resolve = AsyncMock(return_value=["9.9.9.9"])
+        dw = DnsWalk(mock_dns_manager)
+        glue = {"other.example.com": ["1.2.3.4"]}
+        result = await dw.a_resolve("ns.example.com", glue=glue)
+        # Glue doesn't have this host, falls through to do_resolve
+        assert result == ["9.9.9.9"]
+
+
+class TestExtractGlueRecords:
+    def test_with_a_records(self):
+        response = dns.message.Message()
+        rrset = dns.rrset.from_text("ns1.example.com.", 3600, dns.rdataclass.IN, dns.rdatatype.A, "1.2.3.4")
+        response.additional.append(rrset)
+        rrset2 = dns.rrset.from_text("ns2.example.com.", 3600, dns.rdataclass.IN, dns.rdatatype.A, "5.6.7.8")
+        response.additional.append(rrset2)
+        glue = DnsWalk.extract_glue_records(response)
+        assert glue["ns1.example.com"] == ["1.2.3.4"]
+        assert glue["ns2.example.com"] == ["5.6.7.8"]
+
+    def test_empty_additional(self):
+        response = dns.message.Message()
+        glue = DnsWalk.extract_glue_records(response)
+        assert glue == {}
+
+    def test_non_a_records_ignored(self):
+        response = dns.message.Message()
+        rrset = dns.rrset.from_text("ns1.example.com.", 3600, dns.rdataclass.IN, dns.rdatatype.AAAA, "2001:db8::1")
+        response.additional.append(rrset)
+        glue = DnsWalk.extract_glue_records(response)
+        assert glue == {}
+
 
 class TestRawQueryWithRetry:
     @pytest.mark.asyncio

@@ -17,15 +17,14 @@ jobs:
       with:
         ref: dev
 
+    - name: Install uv
+      uses: astral-sh/setup-uv@v6
+
     - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      run: uv python install 3.10
 
     - name: Install dependencies
-      run: |
-        pip install poetry
-        poetry install
+      run: uv sync --group dev
 
     - name: Checkout remote repository (dnsReaper)
       uses: actions/checkout@v3
@@ -42,7 +41,7 @@ jobs:
 
     - name: Read Sources
       run: |
-        poetry run python3 baddns/scripts/readsources.py
+        uv run python3 baddns/scripts/readsources.py
 
     - name: Stage, commit, and create PR for changed files
       env:

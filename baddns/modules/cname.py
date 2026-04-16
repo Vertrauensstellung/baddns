@@ -126,7 +126,7 @@ class BadDNS_cname(BadDNS_base):
                         {
                             "target": self.target_dnsmanager.target,
                             "description": f"Dangling CNAME, possible subdomain takeover (NXDOMAIN technique)",
-                            "confidence": "MODERATE",
+                            "confidence": "MEDIUM",
                             "severity": "MEDIUM",
                             "signature": "GENERIC",
                             "indicator": "Generic Dangling CNAME",
@@ -164,6 +164,15 @@ class BadDNS_cname(BadDNS_base):
                             log.debug(f"no match for {sig.signature['identifiers']['cnames']} for in {self.subject}")
                             continue
                         log.debug("passed CNAME check")
+
+                        if self.direct_mode and any(
+                            self.subject == cname_dict["value"]
+                            for cname_dict in sig.signature["identifiers"]["cnames"]
+                        ):
+                            log.debug(
+                                f"Direct mode: subject [{self.subject}] is the service domain itself, skipping {sig.signature['service_name']}"
+                            )
+                            continue
 
                     if len(sig.signature["identifiers"]["ips"]) > 0:
                         log.debug(f"Signature contains ips [{sig.signature['identifiers']['ips']}], checking them")

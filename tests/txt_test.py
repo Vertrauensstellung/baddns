@@ -48,3 +48,27 @@ async def test_txt_dontmatchip(fs, mock_dispatch_whois, configure_mock_resolver)
         findings = baddns_txt.analyze()
 
     assert not findings
+
+
+@pytest.mark.asyncio
+@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
+async def test_txt_direct_mode_service_domain_fp(fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver):
+    """TXT module should not flag service root domains (e.g. mailgun.org from SPF) as vulnerable."""
+    mock_data = {
+        "bad.dns": {"TXT": ["v=spf1 include:mailgun.org ~all"]},
+        "mailgun.org": {"A": ["127.0.0.1"]},
+    }
+    mock_resolver = configure_mock_resolver(mock_data)
+
+    httpx_mock.add_response(url="http://mailgun.org/", status_code=404)
+
+    target = "bad.dns"
+    mock_signature_load(fs, "nucleitemplates_mailgun-takeover.yml")
+    signatures = load_signatures("/tmp/signatures")
+    baddns_txt = BadDNS_txt(target, signatures=signatures, dns_client=mock_resolver)
+
+    findings = None
+    if await baddns_txt.dispatch():
+        findings = baddns_txt.analyze()
+
+    assert not findings
