@@ -260,6 +260,42 @@ class TestProcessAnswer:
         processed = self.mgr.process_answer(FakeResult(), "NSEC")
         assert "next.example.com" in processed
 
+    def test_unknown_record_dict_with_rdata(self):
+        """UNKNOWN record with dict rdata containing raw bytes."""
+
+        class FakeRecord:
+            def __init__(self):
+                self.rdata = {"UNKNOWN": {"rdata": {"anything": list(b"host.example.com")}}}
+
+        class FakeResponse:
+            def __init__(self):
+                self.answers = [FakeRecord()]
+
+        class FakeResult:
+            def __init__(self):
+                self.response = FakeResponse()
+
+        processed = self.mgr.process_answer(FakeResult(), "UNKNOWN")
+        assert "host.example.com" in processed
+
+    def test_unknown_record_dict_empty_rdata(self):
+        """UNKNOWN record with dict rdata but empty anything field."""
+
+        class FakeRecord:
+            def __init__(self):
+                self.rdata = {"UNKNOWN": {"rdata": {"anything": []}}}
+
+        class FakeResponse:
+            def __init__(self):
+                self.answers = [FakeRecord()]
+
+        class FakeResult:
+            def __init__(self):
+                self.response = FakeResponse()
+
+        processed = self.mgr.process_answer(FakeResult(), "UNKNOWN")
+        assert processed == []
+
 
 class TestDoResolve:
     def setup_method(self):

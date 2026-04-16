@@ -5,6 +5,14 @@ from baddns import cli
 from baddns.lib.errors import BadDNSCLIException, BadDNSSignatureException
 
 
+class TestVersionModule:
+    def test_version_importable(self):
+        from baddns.__version__ import __version__
+
+        assert isinstance(__version__, str)
+        assert len(__version__) > 0
+
+
 class TestPrintVersion:
     def test_print_version_found(self, capsys, monkeypatch):
         monkeypatch.setattr("importlib.metadata.version", lambda name: "1.2.3")
