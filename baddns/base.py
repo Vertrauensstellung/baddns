@@ -11,7 +11,7 @@ class BadDNS_base:
     def __init__(
         self,
         target,
-        http_client_class=None,
+        http_client=None,
         dns_client=None,
         signatures=None,
         custom_nameservers=None,
@@ -19,7 +19,7 @@ class BadDNS_base:
         **kwargs,
     ):
         self.target = self.set_target(target)
-        self.http_client_class = http_client_class
+        self.http_client = http_client
         self.dns_client = dns_client
         self.signatures = signatures
         self.custom_nameservers = custom_nameservers

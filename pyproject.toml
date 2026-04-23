@@ -14,7 +14,7 @@ dependencies = [
     "python-whois>=0.9.6",
     "tldextract>=5.1.1",
     "python-dateutil==2.9.0.post0",
-    "httpx>=0.27.0,<0.29.0",
+    "blasthttp>=0.2.0",
     "cloudcheck>=9,<10",
 ]
 
@@ -32,7 +32,6 @@ dev = [
     "pytest-cov>=5,<8",
     "pytest-asyncio>=0.21.1,<1.4.0",
     "pytest-mock>=3.11.1",
-    "pytest-httpx>=0.33,<0.36",
     "pyfakefs>=5.10,<7.0",
     "mock>=5.1.0",
     "ruff>=0.15.4",

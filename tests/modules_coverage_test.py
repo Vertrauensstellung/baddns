@@ -11,12 +11,11 @@ from .helpers import mock_signature_load
 
 # CNAME line 158: IP-based signature check where IPs match
 @pytest.mark.asyncio
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
-async def test_cname_http_ip_signature_match(fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver):
+async def test_cname_http_ip_signature_match(fs, mock_dispatch_whois, mock_http, configure_mock_resolver):
     mock_data = {"bad.dns": {"CNAME": ["baddns.example.com"]}, "baddns.example.com": {"A": ["10.0.0.1"]}}
     mock_resolver = configure_mock_resolver(mock_data)
 
-    httpx_mock.add_response(url="http://bad.dns/", status_code=200, text="IP Matched Takeover Page")
+    mock_http.add_response(url="http://bad.dns/", status=200, body="IP Matched Takeover Page")
 
     # Create a custom signature with IPs
     sig_content = """
@@ -43,7 +42,7 @@ matcher_rule:
     fs.create_file(f"{fake_dir}/ip_test.yml", contents=sig_content)
 
     signatures = load_signatures("/tmp/signatures")
-    baddns_cname = BadDNS_cname("bad.dns", signatures=signatures, dns_client=mock_resolver)
+    baddns_cname = BadDNS_cname("bad.dns", signatures=signatures, dns_client=mock_resolver, http_client=mock_http)
     findings = None
     if await baddns_cname.dispatch():
         findings = baddns_cname.analyze()
@@ -142,21 +141,20 @@ async def test_nsec_wildcard_protection(fs, configure_mock_resolver):
 
 # References: domain matching self target (line 148-149)
 @pytest.mark.asyncio
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
-async def test_references_self_domain_ignored(fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver):
+async def test_references_self_domain_ignored(fs, mock_dispatch_whois, mock_http, configure_mock_resolver):
     mock_data = {"bad.dns": {"A": ["127.0.0.1"]}}
     mock_resolver = configure_mock_resolver(mock_data)
 
-    httpx_mock.add_response(
+    mock_http.add_response(
         url="http://bad.dns/",
-        status_code=200,
-        text='<script src="https://bad.dns/script.js"></script>',
+        status=200,
+        body='<script src="https://bad.dns/script.js"></script>',
     )
 
     target = "bad.dns"
     mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
     signatures = load_signatures("/tmp/signatures")
-    baddns_ref = BadDNS_references(target, signatures=signatures, dns_client=mock_resolver)
+    baddns_ref = BadDNS_references(target, signatures=signatures, dns_client=mock_resolver, http_client=mock_http)
     await baddns_ref.dispatch()
     findings = baddns_ref.analyze()
     assert findings == []
@@ -165,21 +163,20 @@ async def test_references_self_domain_ignored(fs, mock_dispatch_whois, httpx_moc
 
 # References: extract_domains_body with relative URL (line 110-111)
 @pytest.mark.asyncio
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
-async def test_references_relative_url_skipped(fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver):
+async def test_references_relative_url_skipped(fs, mock_dispatch_whois, mock_http, configure_mock_resolver):
     mock_data = {"bad.dns": {"A": ["127.0.0.1"]}}
     mock_resolver = configure_mock_resolver(mock_data)
 
-    httpx_mock.add_response(
+    mock_http.add_response(
         url="http://bad.dns/",
-        status_code=200,
-        text='<script src="/relative/path.js"></script>',
+        status=200,
+        body='<script src="/relative/path.js"></script>',
     )
 
     target = "bad.dns"
     mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
     signatures = load_signatures("/tmp/signatures")
-    baddns_ref = BadDNS_references(target, signatures=signatures, dns_client=mock_resolver)
+    baddns_ref = BadDNS_references(target, signatures=signatures, dns_client=mock_resolver, http_client=mock_http)
     await baddns_ref.dispatch()
     findings = baddns_ref.analyze()
     assert findings == []
@@ -188,22 +185,21 @@ async def test_references_relative_url_skipped(fs, mock_dispatch_whois, httpx_mo
 
 # References: duplicate domain in headers (line 77)
 @pytest.mark.asyncio
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
-async def test_references_duplicate_header_domain(fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver):
+async def test_references_duplicate_header_domain(fs, mock_dispatch_whois, mock_http, configure_mock_resolver):
     mock_data = {"bad.dns": {"A": ["127.0.0.1"]}, "evil.com": {"A": ["10.0.0.1"]}}
     mock_resolver = configure_mock_resolver(mock_data)
 
-    httpx_mock.add_response(
+    mock_http.add_response(
         url="http://bad.dns/",
-        status_code=200,
-        text="<html>body</html>",
+        status=200,
+        body="<html>body</html>",
         headers={"Content-Security-Policy": "default-src https://evil.com https://evil.com"},
     )
 
     target = "bad.dns"
     mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
     signatures = load_signatures("/tmp/signatures")
-    baddns_ref = BadDNS_references(target, signatures=signatures, dns_client=mock_resolver)
+    baddns_ref = BadDNS_references(target, signatures=signatures, dns_client=mock_resolver, http_client=mock_http)
     await baddns_ref.dispatch()
     await baddns_ref.cleanup()
 
@@ -223,8 +219,7 @@ async def test_txt_ip_address_skipped(fs, mock_dispatch_whois, configure_mock_re
 
 # TXT line 122: non-direct cname findings
 @pytest.mark.asyncio
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
-async def test_txt_with_cname_findings(fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver):
+async def test_txt_with_cname_findings(fs, mock_dispatch_whois, mock_http, configure_mock_resolver):
     mock_data = {
         "bad.dns": {"TXT": ["v=spf1 include:vuln.somerandomthing.net ~all"]},
         "vuln.somerandomthing.net": {"CNAME": ["target.somerandomthing.net."]},
@@ -233,7 +228,7 @@ async def test_txt_with_cname_findings(fs, mock_dispatch_whois, httpx_mock, conf
     mock_resolver = configure_mock_resolver(mock_data)
     mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
     signatures = load_signatures("/tmp/signatures")
-    baddns_txt = BadDNS_txt("bad.dns", signatures=signatures, dns_client=mock_resolver)
+    baddns_txt = BadDNS_txt("bad.dns", signatures=signatures, dns_client=mock_resolver, http_client=mock_http)
     result = await baddns_txt.dispatch()
     assert result is True
     baddns_txt.analyze()

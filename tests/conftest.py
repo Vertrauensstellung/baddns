@@ -4,9 +4,19 @@ import pytest
 from baddns.lib.whoismanager import WhoisManager
 from baddns.lib.dnswalk import DnsWalk
 from baddns.lib.dnsmanager import DNSManager
+from baddns.mock_blasthttp import MockBlastHTTP
 from .helpers import create_mock_client, DnsWalkHarness
 
 import dns.asyncquery
+
+
+@pytest.fixture
+def mock_http():
+    """A fresh MockBlastHTTP per test. Tests register responses with
+    ``mock_http.add_response(url=..., status=, body=, headers=)`` and pass the
+    fixture through to BadDNS_* constructors as ``http_client=mock_http``."""
+    return MockBlastHTTP()
+
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 local_test_file = os.path.join(PROJECT_ROOT, "tests", "cached_suffix_list.dat")
