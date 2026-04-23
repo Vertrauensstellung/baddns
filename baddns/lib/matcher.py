@@ -1,9 +1,10 @@
 import re
 import os
 import sys
-import httpx
 import yaml
 import logging
+
+from baddns.lib.httpmanager import headers_to_dict
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -27,11 +28,7 @@ class Matcher:
 
     def _status(self, criteria):
         negative = criteria.get("negative", False)
-        return (
-            self.response.status_code != criteria["status"]
-            if negative
-            else self.response.status_code == criteria["status"]
-        )
+        return self.response.status != criteria["status"] if negative else self.response.status == criteria["status"]
 
     def _word(self, criteria):
         words = criteria["words"]
@@ -39,9 +36,9 @@ class Matcher:
         negative = criteria.get("negative", False)
 
         if part == "header":
-            text = str(self.response.headers)
+            text = str(headers_to_dict(self.response.headers))
         elif part == "body":
-            text = self.response.text
+            text = self.response.body
 
         # we can ignore this because are already adding these entries into the identifiers
         elif part in ("host", "cname"):
@@ -61,9 +58,10 @@ class Matcher:
         for pattern in criteria["regex"]:
             regex = re.compile(pattern)
             if "part" in criteria and criteria["part"].lower() == "header":
-                match = any(regex.search(header_value) for header_value in self.response.headers.values())
+                header_values = headers_to_dict(self.response.headers).values()
+                match = any(regex.search(header_value) for header_value in header_values)
             else:
-                match = bool(regex.search(self.response.text))
+                match = bool(regex.search(self.response.body))
             matches.append(match)
         condition = criteria.get("condition", "and")
         if condition == "and":
@@ -72,8 +70,6 @@ class Matcher:
             return not any(matches) if negative else any(matches)
 
     def is_match(self, response):
-        if not isinstance(response, httpx.Response):
-            raise TypeError("response must be an httpx.Response object")
         self.response = response
         matchers_condition = self.rules.get("matchers-condition", "and")
         results = []

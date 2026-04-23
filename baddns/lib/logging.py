@@ -22,7 +22,7 @@ class CustomLogFormatter(logging.Formatter):
 def setup_logging():
     global log
     log = logging.getLogger("baddns")
-    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("blasthttp").setLevel(logging.WARNING)
     log.setLevel(logging.INFO)
     ch = logging.StreamHandler()
     ch.setFormatter(CustomLogFormatter())

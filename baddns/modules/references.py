@@ -3,7 +3,7 @@ import asyncio
 
 from baddns.base import BadDNS_base
 from baddns.lib.dnsmanager import DNSManager
-from baddns.lib.httpmanager import HttpManager
+from baddns.lib.httpmanager import HttpManager, headers_to_dict
 from baddns.modules.cname import BadDNS_cname
 from baddns.lib.findings import Finding
 
@@ -32,9 +32,7 @@ class BadDNS_references(BadDNS_base):
         self.target_dnsmanager = DNSManager(
             target, dns_client=self.dns_client, custom_nameservers=self.custom_nameservers
         )
-        self.target_httpmanager = HttpManager(
-            self.target, http_client_class=self.http_client_class, skip_redirects=True
-        )
+        self.target_httpmanager = HttpManager(self.target, http_client=self.http_client, skip_redirects=True)
         self.cname_findings = None
         self.cname_findings_direct = None
         self.reference_data = {}
@@ -153,7 +151,7 @@ class BadDNS_references(BadDNS_base):
                     signatures=self.signatures,
                     direct_mode=direct_mode,
                     parent_class="references",
-                    http_client_class=self.http_client_class,
+                    http_client=self.http_client,
                     dns_client=self.dns_client,
                 )
                 try:
@@ -197,8 +195,8 @@ class BadDNS_references(BadDNS_base):
 
         parsed_results = []
         for r in live_results:
-            parsed_results.extend(self.parse_headers(r.headers))
-            parsed_results.extend(self.parse_body(r.text))
+            parsed_results.extend(self.parse_headers(headers_to_dict(r.headers)))
+            parsed_results.extend(self.parse_body(r.body))
 
         self.cname_findings_direct = await self.process_cname_analysis(parsed_results)
         return True

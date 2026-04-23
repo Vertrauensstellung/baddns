@@ -1,12 +1,26 @@
-import httpx
 import logging
 import asyncio
+
+from blasthttp import BlastHTTP
 
 log = logging.getLogger(__name__)
 
 
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0"
+
+
+def headers_to_dict(headers):
+    """Normalize a blasthttp-style header iterable (list of (k, v) tuples) to a dict.
+
+    Duplicate keys collapse to the last value.
+    """
+    if isinstance(headers, dict):
+        return headers
+    return dict(headers or [])
+
+
 async def as_completed(coros):
-    tasks = {coro if isinstance(coro, asyncio.Task) else asyncio.create_task(coro): coro for coro in coros}
+    tasks = {coro if isinstance(coro, asyncio.Future) else asyncio.ensure_future(coro): coro for coro in coros}
     while tasks:
         done, _ = await asyncio.wait(tasks.keys(), return_when=asyncio.FIRST_COMPLETED)
         for task in done:
@@ -15,16 +29,9 @@ async def as_completed(coros):
 
 
 class HttpManager:
-    def __init__(self, target, http_client_class=None, skip_redirects=False):
+    def __init__(self, target, http_client=None, skip_redirects=False):
         self.skip_redirects = skip_redirects
-        if not http_client_class:
-            http_client_class = httpx.AsyncClient
-
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0",
-        }
-
-        self.http_client = http_client_class(timeout=5, verify=False, headers=headers)
+        self.http_client = http_client if http_client is not None else BlastHTTP()
         self.target = target
         for attr in [
             "http_allowredirects_results",
@@ -45,7 +52,18 @@ class HttpManager:
 
             follow_redirects_options = [True, False] if not self.skip_redirects else [False]
             for follow_redirects in follow_redirects_options:
-                task = asyncio.create_task(self.http_client.get(base_url, follow_redirects=follow_redirects))
+                # ensure_future (not create_task) — blasthttp's pyo3-backed
+                # request returns a Future, not a coroutine.
+                task = asyncio.ensure_future(
+                    self.http_client.request(
+                        base_url,
+                        method="GET",
+                        headers=[("User-Agent", USER_AGENT)],
+                        timeout=5,
+                        verify_certs=False,
+                        follow_redirects=follow_redirects,
+                    )
+                )
                 tasks[task] = (protocol, follow_redirects, base_url)
 
         # Use as_completed to handle each task as it completes
@@ -63,6 +81,5 @@ class HttpManager:
                 setattr(self, attr_name, None)
 
     async def close(self):
-        """Clean up the http_client when done."""
-        await self.http_client.aclose()
-        log.debug("HTTP client closed successfully.")
+        """No-op. blasthttp clients are shared and don't need per-consumer teardown."""
+        pass

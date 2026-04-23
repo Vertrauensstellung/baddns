@@ -20,9 +20,7 @@ class BadDNS_txt(BadDNS_base):
         self.target_dnsmanager = DNSManager(
             target, dns_client=self.dns_client, custom_nameservers=self.custom_nameservers
         )
-        self.target_httpmanager = HttpManager(
-            self.target, http_client_class=self.http_client_class, skip_redirects=True
-        )
+        self.target_httpmanager = HttpManager(self.target, http_client=self.http_client, skip_redirects=True)
         self.cname_findings = None
         self.cname_findings_direct = None
         self.reference_data = {}
@@ -58,7 +56,7 @@ class BadDNS_txt(BadDNS_base):
                     signatures=self.signatures,
                     direct_mode=True,
                     parent_class="txt",
-                    http_client_class=self.http_client_class,
+                    http_client=self.http_client,
                     dns_client=self.dns_client,
                 )
                 if await cname_instance_direct.dispatch():
@@ -77,7 +75,7 @@ class BadDNS_txt(BadDNS_base):
                     signatures=self.signatures,
                     direct_mode=False,
                     parent_class="txt",
-                    http_client_class=self.http_client_class,
+                    http_client=self.http_client,
                     dns_client=self.dns_client,
                 )
                 if await cname_instance.dispatch():

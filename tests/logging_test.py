@@ -9,10 +9,10 @@ class TestSetupLogging:
         assert log.level == logging.INFO
         assert any(isinstance(h.formatter, CustomLogFormatter) for h in log.handlers)
 
-    def test_httpx_log_level(self):
+    def test_blasthttp_log_level(self):
         setup_logging()
-        httpx_log = logging.getLogger("httpx")
-        assert httpx_log.level == logging.WARNING
+        blasthttp_log = logging.getLogger("blasthttp")
+        assert blasthttp_log.level == logging.WARNING
 
 
 class TestDebugLogging:
