@@ -34,10 +34,6 @@ class BadDNS_mtasts(BadDNS_base):
         self.mx_whois_results = {}
         self.mta_sts_host = f"mta-sts.{target}"
 
-        # Use the shared blasthttp client so policy fetches obey rate limits /
-        # user-agent / cookie settings established by the caller.
-        self._policy_client = self.http_client if self.http_client is not None else BlastHTTP()
-
     async def _dispatch(self):
         # Step 1: Check for _mta-sts TXT record
         await self.target_dnsmanager.dispatchDNS(omit_types=["A", "AAAA", "CNAME", "NS", "SOA", "MX", "NSEC"])
@@ -107,8 +103,9 @@ class BadDNS_mtasts(BadDNS_base):
 
         # Step 3: Fetch policy file
         policy_url = f"https://{self.mta_sts_host}/.well-known/mta-sts.txt"
+        http_client = self.http_client if self.http_client is not None else BlastHTTP()
         try:
-            response = await self._policy_client.request(
+            response = await http_client.request(
                 policy_url,
                 method="GET",
                 headers=[("User-Agent", USER_AGENT)],
