@@ -1,14 +1,12 @@
-import httpx
-
 from baddns.lib.matcher import Matcher
+from baddns.mock_blasthttp import MockResponse
 
 
-def test_matcher_1(httpx_mock):
-    httpx_mock.add_response(
-        url="https://baddns.com/test1",
-        status_code=404,
-        text="<html><p>Domain isn't configured</p><p>flexbe</p></html>",
-    )
+def _response(url, status=200, body="", headers=None):
+    return MockResponse(url=url, status=status, body=body, headers=headers)
+
+
+def test_matcher_1():
     rules = """
 identifiers:
   cnames: []
@@ -34,17 +32,15 @@ service_name: Flexbe Subdomain Takeover
 source: nucleitemplates
     """
     m = Matcher(rules)
-    r = httpx.get("https://baddns.com/test1")
+    r = _response(
+        url="https://baddns.com/test1",
+        status=404,
+        body="<html><p>Domain isn't configured</p><p>flexbe</p></html>",
+    )
     assert m.is_match(r)
 
 
-def test_matcher_2(httpx_mock):
-    httpx_mock.add_response(
-        url="https://baddns.com/test2",
-        status_code=302,
-        text="<html><p>Content</p></html>",
-        headers={"Foo": "offline.ghost.org"},
-    )
+def test_matcher_2():
     rules = """
   identifiers:
     cnames: []
@@ -69,17 +65,16 @@ def test_matcher_2(httpx_mock):
   source: nucleitemplates
     """
     m = Matcher(rules)
-    r = httpx.get("https://baddns.com/test2")
+    r = _response(
+        url="https://baddns.com/test2",
+        status=302,
+        body="<html><p>Content</p></html>",
+        headers={"Foo": "offline.ghost.org"},
+    )
     assert m.is_match(r)
 
 
-def test_matcher_3(httpx_mock):
-    httpx_mock.add_response(
-        url="https://baddns.com/test3",
-        status_code=302,
-        text="<html><p>you&rsquo;re looking for doesn&rsquo;t exist</p></html>",
-        headers={"Foo": "offline.ghost.org"},
-    )
+def test_matcher_3():
     rules = """
   identifiers:
     cnames: []
@@ -100,17 +95,16 @@ def test_matcher_3(httpx_mock):
   source: nucleitemplates
         """
     m = Matcher(rules)
-    r = httpx.get("https://baddns.com/test3")
+    r = _response(
+        url="https://baddns.com/test3",
+        status=302,
+        body="<html><p>you&rsquo;re looking for doesn&rsquo;t exist</p></html>",
+        headers={"Foo": "offline.ghost.org"},
+    )
     assert m.is_match(r)
 
 
-def test_matcher_4(httpx_mock):
-    httpx_mock.add_response(
-        url="https://baddns.com/test4",
-        status_code=302,
-        text="<html><p>regex_matcher_test_1234</p></html>",
-        headers={"Foo": "offline.ghost.org"},
-    )
+def test_matcher_4():
     rules = """
   identifiers:
     cnames: []
@@ -131,6 +125,11 @@ def test_matcher_4(httpx_mock):
   source: nucleitemplates
         """
     m = Matcher(rules)
-    r = httpx.get("https://baddns.com/test4")
+    r = _response(
+        url="https://baddns.com/test4",
+        status=302,
+        body="<html><p>regex_matcher_test_1234</p></html>",
+        headers={"Foo": "offline.ghost.org"},
+    )
     print(m.is_match(r))
     assert m.is_match(r)

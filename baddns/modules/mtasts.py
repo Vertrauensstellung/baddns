@@ -1,9 +1,11 @@
-import httpx
 import logging
 import fnmatch
 
+from blasthttp import BlastHTTP
+
 from baddns.base import BadDNS_base
 from baddns.lib.dnsmanager import DNSManager
+from baddns.lib.httpmanager import USER_AGENT
 from baddns.lib.whoismanager import WhoisManager
 from baddns.lib.findings import Finding
 from baddns.modules.cname import BadDNS_cname
@@ -31,12 +33,6 @@ class BadDNS_mtasts(BadDNS_base):
         self.policy_error = None
         self.mx_whois_results = {}
         self.mta_sts_host = f"mta-sts.{target}"
-
-        http_client_class = self.http_client_class or httpx.AsyncClient
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:117.0) Gecko/20100101 Firefox/117.0",
-        }
-        self._policy_client = http_client_class(timeout=5, verify=False, headers=headers)
 
     async def _dispatch(self):
         # Step 1: Check for _mta-sts TXT record
@@ -69,7 +65,7 @@ class BadDNS_mtasts(BadDNS_base):
             signatures=self.signatures,
             direct_mode=True,
             parent_class="mtasts",
-            http_client_class=self.http_client_class,
+            http_client=self.http_client,
             dns_client=self.dns_client,
         )
         if await cname_instance_direct.dispatch():
@@ -90,7 +86,7 @@ class BadDNS_mtasts(BadDNS_base):
             signatures=self.signatures,
             direct_mode=False,
             parent_class="mtasts",
-            http_client_class=self.http_client_class,
+            http_client=self.http_client,
             dns_client=self.dns_client,
         )
         if await cname_instance.dispatch():
@@ -107,14 +103,22 @@ class BadDNS_mtasts(BadDNS_base):
 
         # Step 3: Fetch policy file
         policy_url = f"https://{self.mta_sts_host}/.well-known/mta-sts.txt"
+        http_client = self.http_client if self.http_client is not None else BlastHTTP()
         try:
-            response = await self._policy_client.get(policy_url, follow_redirects=True)
-            if response.status_code == 200:
-                self.policy = self._parse_policy(response.text)
+            response = await http_client.request(
+                policy_url,
+                method="GET",
+                headers=[("User-Agent", USER_AGENT)],
+                timeout=5,
+                verify_certs=False,
+                follow_redirects=True,
+            )
+            if response.status == 200:
+                self.policy = self._parse_policy(response.body)
                 log.debug(f"Parsed MTA-STS policy: {self.policy}")
             else:
-                self.policy_error = f"HTTP {response.status_code}"
-                log.debug(f"Policy fetch returned {response.status_code}")
+                self.policy_error = f"HTTP {response.status}"
+                log.debug(f"Policy fetch returned {response.status}")
         except Exception as e:
             self.policy_error = str(e)
             log.debug(f"Policy fetch failed: {e}")
@@ -252,6 +256,5 @@ class BadDNS_mtasts(BadDNS_base):
         return findings
 
     async def cleanup(self):
-        if self._policy_client:
-            await self._policy_client.aclose()
-            log.debug("MTA-STS policy client closed successfully.")
+        # blasthttp clients are shared — nothing to tear down here.
+        pass

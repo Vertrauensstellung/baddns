@@ -1,6 +1,10 @@
 import pytest
-import httpx
 from baddns.lib.matcher import Matcher
+from baddns.mock_blasthttp import MockResponse
+
+
+def _response(url="https://test.com/", status=200, body="", headers=None):
+    return MockResponse(url=url, status=status, body=body, headers=headers)
 
 
 class TestMatcherInit:
@@ -30,61 +34,55 @@ matcher_rule:
 
 
 class TestMatcherStatus:
-    def test_status_negative(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200)
+    def test_status_negative(self):
         rules = {
             "matchers-condition": "and",
             "matcher_rule": {"matchers": [{"type": "status", "status": 200, "negative": True}]},
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200)
         assert not m.is_match(r)
 
-    def test_status_negative_nonmatch(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=404)
+    def test_status_negative_nonmatch(self):
         rules = {
             "matchers-condition": "and",
             "matcher_rule": {"matchers": [{"type": "status", "status": 200, "negative": True}]},
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=404)
         assert m.is_match(r)
 
 
 class TestMatcherWord:
-    def test_word_host_part(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="body")
+    def test_word_host_part(self):
         rules = {
             "matchers-condition": "and",
             "matcher_rule": {"matchers": [{"type": "word", "words": ["test"], "part": "host"}]},
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="body")
         assert m.is_match(r)
 
-    def test_word_cname_part(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="body")
+    def test_word_cname_part(self):
         rules = {
             "matchers-condition": "and",
             "matcher_rule": {"matchers": [{"type": "word", "words": ["test"], "part": "cname"}]},
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="body")
         assert m.is_match(r)
 
-    def test_word_unknown_part(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="body")
+    def test_word_unknown_part(self):
         rules = {
             "matchers-condition": "and",
             "matcher_rule": {"matchers": [{"type": "word", "words": ["test"], "part": "unknown"}]},
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="body")
         with pytest.raises(ValueError, match="Unknown part"):
             m.is_match(r)
 
-    def test_word_negative_and(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="hello world")
+    def test_word_negative_and(self):
         rules = {
             "matchers-condition": "and",
             "matcher_rule": {
@@ -94,11 +92,10 @@ class TestMatcherWord:
             },
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="hello world")
         assert not m.is_match(r)
 
-    def test_word_negative_or(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="hello world")
+    def test_word_negative_or(self):
         rules = {
             "matchers-condition": "and",
             "matcher_rule": {
@@ -108,11 +105,10 @@ class TestMatcherWord:
             },
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="hello world")
         assert not m.is_match(r)
 
-    def test_word_or_condition(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="hello world")
+    def test_word_or_condition(self):
         rules = {
             "matchers-condition": "and",
             "matcher_rule": {
@@ -120,43 +116,39 @@ class TestMatcherWord:
             },
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="hello world")
         assert m.is_match(r)
 
 
 class TestMatcherRegex:
-    def test_regex_header(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="", headers={"X-Custom": "abc123def"})
+    def test_regex_header(self):
         rules = {
             "matchers-condition": "and",
             "matcher_rule": {"matchers": [{"type": "regex", "regex": ["abc\\d+def"], "part": "header"}]},
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="", headers={"X-Custom": "abc123def"})
         assert m.is_match(r)
 
-    def test_regex_negative(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="abc123def")
+    def test_regex_negative(self):
         rules = {
             "matchers-condition": "and",
             "matcher_rule": {"matchers": [{"type": "regex", "regex": ["abc\\d+def"], "negative": True}]},
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="abc123def")
         assert not m.is_match(r)
 
-    def test_regex_or_condition(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="hello world")
+    def test_regex_or_condition(self):
         rules = {
             "matchers-condition": "and",
             "matcher_rule": {"matchers": [{"type": "regex", "regex": ["nomatch", "hello"], "condition": "or"}]},
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="hello world")
         assert m.is_match(r)
 
-    def test_regex_negative_or(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="hello world")
+    def test_regex_negative_or(self):
         rules = {
             "matchers-condition": "and",
             "matcher_rule": {
@@ -164,18 +156,12 @@ class TestMatcherRegex:
             },
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="hello world")
         assert not m.is_match(r)
 
 
 class TestMatcherIsMatch:
-    def test_invalid_response_type(self):
-        m = Matcher({"matchers-condition": "and", "matcher_rule": {"matchers": []}})
-        with pytest.raises(TypeError, match="response must be an httpx.Response"):
-            m.is_match("not a response")
-
-    def test_or_matchers_condition(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="hello")
+    def test_or_matchers_condition(self):
         rules = {
             "matchers-condition": "or",
             "matcher_rule": {
@@ -186,34 +172,31 @@ class TestMatcherIsMatch:
             },
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="hello")
         assert m.is_match(r)
 
-    def test_no_matching_func(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="hello")
+    def test_no_matching_func(self):
         rules = {
             "matchers-condition": "and",
             "matcher_rule": {"matchers": [{"type": "dsl", "dsl": ["Host != ip"]}]},
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="hello")
         # dsl type has no handler, results empty, returns False
         assert not m.is_match(r)
 
-    def test_empty_matchers(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="hello")
+    def test_empty_matchers(self):
         rules = {"matchers-condition": "and", "matcher_rule": {"matchers": []}}
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="hello")
         # empty matchers produce no results, returns False
         assert not m.is_match(r)
 
-    def test_unknown_matchers_condition(self, httpx_mock):
-        httpx_mock.add_response(url="https://test.com/", status_code=200, text="hello")
+    def test_unknown_matchers_condition(self):
         rules = {
             "matchers-condition": "xor",
             "matcher_rule": {"matchers": [{"type": "word", "words": ["hello"], "part": "body"}]},
         }
         m = Matcher(rules)
-        r = httpx.get("https://test.com/")
+        r = _response(status=200, body="hello")
         assert not m.is_match(r)

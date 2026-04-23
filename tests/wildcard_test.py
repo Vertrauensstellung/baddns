@@ -101,8 +101,7 @@ async def test_wildcard_target_is_registered_domain(fs, mock_dispatch_whois, con
 
 
 @pytest.mark.asyncio
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
-async def test_wildcard_cname_resolves_not_vulnerable(fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver):
+async def test_wildcard_cname_resolves_not_vulnerable(fs, mock_dispatch_whois, mock_http, configure_mock_resolver):
     """Wildcard CNAME resolves to a healthy target -> no findings."""
     mock_data = {
         "baddns-test1234.bad.dns": {"CNAME": ["healthy.example.com."]},
@@ -113,7 +112,7 @@ async def test_wildcard_cname_resolves_not_vulnerable(fs, mock_dispatch_whois, h
     target = "sub.bad.dns"
     mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
     signatures = load_signatures("/tmp/signatures")
-    baddns_wildcard = BadDNS_wildcard(target, signatures=signatures, dns_client=mock_resolver)
+    baddns_wildcard = BadDNS_wildcard(target, signatures=signatures, dns_client=mock_resolver, http_client=mock_http)
 
     findings = None
     if await baddns_wildcard.dispatch():
@@ -161,9 +160,8 @@ mock_whois_unregistered = {
 
 
 @pytest.mark.asyncio
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
 @pytest.mark.parametrize("mock_dispatch_whois", [mock_whois_unregistered], indirect=True)
-async def test_wildcard_whois_unregistered(fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver):
+async def test_wildcard_whois_unregistered(fs, mock_dispatch_whois, mock_http, configure_mock_resolver):
     """Wildcard CNAME to a domain that is unregistered per WHOIS -> CONFIRMED confidence."""
     mock_data = {
         "baddns-test1234.bad.dns": {"CNAME": ["worse.dns."]},
@@ -174,7 +172,7 @@ async def test_wildcard_whois_unregistered(fs, mock_dispatch_whois, httpx_mock, 
     target = "sub.bad.dns"
     mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
     signatures = load_signatures("/tmp/signatures")
-    baddns_wildcard = BadDNS_wildcard(target, signatures=signatures, dns_client=mock_resolver)
+    baddns_wildcard = BadDNS_wildcard(target, signatures=signatures, dns_client=mock_resolver, http_client=mock_http)
 
     findings = None
     if await baddns_wildcard.dispatch():

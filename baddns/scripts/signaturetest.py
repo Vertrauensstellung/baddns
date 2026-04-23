@@ -4,8 +4,10 @@ import yaml
 import json
 import string
 import random
-import httpx
+import asyncio
+
 import dns.resolver
+from blasthttp import BlastHTTP
 
 rand_pool = string.ascii_lowercase
 
@@ -66,17 +68,20 @@ yaml_data = yaml.safe_load(testsig)
 match_table = {}
 
 
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Cache-Control": "no-cache",
-    "Connection": "keep-alive",
-    "Pragma": "no-cache",
-    "Upgrade-Insecure-Requests": "1",
-}
+headers = [
+    (
+        "User-Agent",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+    ),
+    ("Accept-Language", "en-US,en;q=0.9"),
+    ("Cache-Control", "no-cache"),
+    ("Connection", "keep-alive"),
+    ("Pragma", "no-cache"),
+    ("Upgrade-Insecure-Requests", "1"),
+]
 
 
-def process_file(file_path):
+async def process_file(file_path):
     error = None
     signature_pass = False
 
@@ -92,6 +97,7 @@ def process_file(file_path):
 
     if sig.signature["mode"] == "http":
         matcher = Matcher(sig.signature)
+        client = BlastHTTP()
         if len(sig.signature["identifiers"]["cnames"]) > 0:
             for cname_dict in sig.signature["identifiers"]["cnames"]:
                 if cname_dict["type"] == "word":
@@ -101,10 +107,17 @@ def process_file(file_path):
                         for follow_redirects in [True, False]:
                             try:
                                 url = f"{scheme}://{rand_string()}.{cname}"
-                                r = httpx.get(url, headers=headers, follow_redirects=follow_redirects, timeout=5)
+                                r = await client.request(
+                                    url,
+                                    method="GET",
+                                    headers=headers,
+                                    follow_redirects=follow_redirects,
+                                    timeout=5,
+                                    verify_certs=False,
+                                )
                                 if matcher.is_match(r):
                                     match_found = True
-                            except (httpx.ConnectError, httpx.ReadTimeout):
+                            except Exception:
                                 pass
                     if match_found:
                         signature_pass = True
@@ -145,7 +158,7 @@ def main():
         sys.exit(1)
 
     file_path = sys.argv[1]
-    signature_pass, match_table, error = process_file(file_path)
+    signature_pass, match_table, error = asyncio.run(process_file(file_path))
 
     # Convert results to JSON and print
     result = {

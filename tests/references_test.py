@@ -82,22 +82,23 @@ mock_references_headers_cors = {
 
 
 @pytest.mark.asyncio
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
 @pytest.mark.parametrize("mock_dispatch_whois", [mock_whois_unregistered], indirect=True)
-async def test_references_cname_css(fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver, cached_suffix_list):
+async def test_references_cname_css(fs, mock_dispatch_whois, mock_http, configure_mock_resolver, cached_suffix_list):
     with patch("sys.exit") as exit_mock:
         mock_data = {"bad.dns": {"A": ["127.0.0.1"]}}
         mock_resolver = configure_mock_resolver(mock_data)
         mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
         signatures = load_signatures("/tmp/signatures")
-        httpx_mock.add_response(
+        mock_http.add_response(
             url="http://bad.dns/",
-            status_code=200,
-            text=mock_references_http_css_cname,
+            status=200,
+            body=mock_references_http_css_cname,
         )
         target = "bad.dns"
         signatures = load_signatures("/tmp/signatures")
-        baddns_references = BadDNS_references(target, signatures=signatures, dns_client=mock_resolver)
+        baddns_references = BadDNS_references(
+            target, signatures=signatures, dns_client=mock_resolver, http_client=mock_http
+        )
         findings = None
         if await baddns_references.dispatch():
             findings = baddns_references.analyze()
@@ -117,22 +118,23 @@ async def test_references_cname_css(fs, mock_dispatch_whois, httpx_mock, configu
 
 
 @pytest.mark.asyncio
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
 @pytest.mark.parametrize("mock_dispatch_whois", [mock_whois_unregistered], indirect=True)
-async def test_references_cname_js(fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver, cached_suffix_list):
+async def test_references_cname_js(fs, mock_dispatch_whois, mock_http, configure_mock_resolver, cached_suffix_list):
     with patch("sys.exit") as exit_mock:
         mock_data = {"bad.dns": {"A": ["127.0.0.1"]}}
         mock_resolver = configure_mock_resolver(mock_data)
         mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
         signatures = load_signatures("/tmp/signatures")
-        httpx_mock.add_response(
+        mock_http.add_response(
             url="http://bad.dns/",
-            status_code=200,
-            text=mock_references_http_js_cname,
+            status=200,
+            body=mock_references_http_js_cname,
         )
         target = "bad.dns"
         signatures = load_signatures("/tmp/signatures")
-        baddns_references = BadDNS_references(target, signatures=signatures, dns_client=mock_resolver)
+        baddns_references = BadDNS_references(
+            target, signatures=signatures, dns_client=mock_resolver, http_client=mock_http
+        )
         findings = None
         if await baddns_references.dispatch():
             findings = baddns_references.analyze()
@@ -153,21 +155,22 @@ async def test_references_cname_js(fs, mock_dispatch_whois, httpx_mock, configur
 
 
 @pytest.mark.asyncio
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
-async def test_references_direct_js(fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver, cached_suffix_list):
+async def test_references_direct_js(fs, mock_dispatch_whois, mock_http, configure_mock_resolver, cached_suffix_list):
     with patch("sys.exit") as exit_mock:
         mock_data = {"bad.dns": {"A": ["127.0.0.1"]}, "_NXDOMAIN": ["direct.azurewebsites.net"]}
         mock_resolver = configure_mock_resolver(mock_data)
         mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
 
-        httpx_mock.add_response(
+        mock_http.add_response(
             url="http://bad.dns/",
-            status_code=200,
-            text=mock_references_http_js_direct,
+            status=200,
+            body=mock_references_http_js_direct,
         )
         target = "bad.dns"
         signatures = load_signatures("/tmp/signatures")
-        baddns_references = BadDNS_references(target, signatures=signatures, dns_client=mock_resolver)
+        baddns_references = BadDNS_references(
+            target, signatures=signatures, dns_client=mock_resolver, http_client=mock_http
+        )
         findings = None
         if await baddns_references.dispatch():
             findings = baddns_references.analyze()
@@ -187,21 +190,22 @@ async def test_references_direct_js(fs, mock_dispatch_whois, httpx_mock, configu
 
 
 @pytest.mark.asyncio
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
-async def test_references_direct_css(fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver, cached_suffix_list):
+async def test_references_direct_css(fs, mock_dispatch_whois, mock_http, configure_mock_resolver, cached_suffix_list):
     with patch("sys.exit") as exit_mock:
         mock_data = {"bad.dns": {"A": ["127.0.0.1"]}, "_NXDOMAIN": ["direct.azurewebsites.net"]}
         mock_resolver = configure_mock_resolver(mock_data)
         mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
 
-        httpx_mock.add_response(
+        mock_http.add_response(
             url="http://bad.dns/",
-            status_code=200,
-            text=mock_references_http_css_direct,
+            status=200,
+            body=mock_references_http_css_direct,
         )
         target = "bad.dns"
         signatures = load_signatures("/tmp/signatures")
-        baddns_references = BadDNS_references(target, signatures=signatures, dns_client=mock_resolver)
+        baddns_references = BadDNS_references(
+            target, signatures=signatures, dns_client=mock_resolver, http_client=mock_http
+        )
         findings = None
         if await baddns_references.dispatch():
             findings = baddns_references.analyze()
@@ -222,8 +226,7 @@ async def test_references_direct_css(fs, mock_dispatch_whois, httpx_mock, config
 
 
 @pytest.mark.asyncio
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
-async def test_references_direct_csp(fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver, cached_suffix_list):
+async def test_references_direct_csp(fs, mock_dispatch_whois, mock_http, configure_mock_resolver, cached_suffix_list):
     with patch("sys.exit") as exit_mock:
         mock_data = {
             "bad.dns": {"A": ["127.0.0.1"]},
@@ -232,15 +235,17 @@ async def test_references_direct_csp(fs, mock_dispatch_whois, httpx_mock, config
         mock_resolver = configure_mock_resolver(mock_data)
         mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
 
-        httpx_mock.add_response(
+        mock_http.add_response(
             url="http://bad.dns/",
-            status_code=200,
-            text="OK",
+            status=200,
+            body="OK",
             headers=mock_references_headers_csp,
         )
         target = "bad.dns"
         signatures = load_signatures("/tmp/signatures")
-        baddns_references = BadDNS_references(target, signatures=signatures, dns_client=mock_resolver)
+        baddns_references = BadDNS_references(
+            target, signatures=signatures, dns_client=mock_resolver, http_client=mock_http
+        )
         findings = None
         if await baddns_references.dispatch():
             findings = baddns_references.analyze()
@@ -272,10 +277,7 @@ async def test_references_direct_csp(fs, mock_dispatch_whois, httpx_mock, config
 
 
 @pytest.mark.asyncio
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
-async def test_references_direct_cors(
-    fs, mock_dispatch_whois, httpx_mock, configure_mock_resolver, cached_suffix_list
-):
+async def test_references_direct_cors(fs, mock_dispatch_whois, mock_http, configure_mock_resolver, cached_suffix_list):
     with patch("sys.exit") as exit_mock:
         mock_data = {
             "bad.dns": {"A": ["127.0.0.1"]},
@@ -284,15 +286,17 @@ async def test_references_direct_cors(
         mock_resolver = configure_mock_resolver(mock_data)
         mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
 
-        httpx_mock.add_response(
+        mock_http.add_response(
             url="http://bad.dns/",
-            status_code=200,
-            text="OK",
+            status=200,
+            body="OK",
             headers=mock_references_headers_cors,
         )
         target = "bad.dns"
         signatures = load_signatures("/tmp/signatures")
-        baddns_references = BadDNS_references(target, signatures=signatures, dns_client=mock_resolver)
+        baddns_references = BadDNS_references(
+            target, signatures=signatures, dns_client=mock_resolver, http_client=mock_http
+        )
         findings = None
         if await baddns_references.dispatch():
             findings = baddns_references.analyze()

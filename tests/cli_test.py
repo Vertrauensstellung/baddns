@@ -1,6 +1,5 @@
 import os
 import sys
-import pytest
 from unittest.mock import patch
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -55,8 +54,7 @@ def test_cli_cname_nxdomain(monkeypatch, capsys, mocker, configure_mock_resolver
     assert "baddns.azurewebsites.net" in captured.out
 
 
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
-def test_cli_cname_http(monkeypatch, capsys, mocker, httpx_mock, configure_mock_resolver):
+def test_cli_cname_http(monkeypatch, capsys, mocker, mock_http, configure_mock_resolver):
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -71,10 +69,16 @@ def test_cli_cname_http(monkeypatch, capsys, mocker, httpx_mock, configure_mock_
     mocker.patch("baddns.cli.Client", return_value=mock_resolver)
     mocker.patch("baddns.lib.dnsmanager.Client", return_value=mock_resolver)
 
-    httpx_mock.add_response(
+    # CLI doesn't expose http_client injection; patch default BlastHTTP() in
+    # the one spot this module path reaches (HttpManager) so our mock takes over.
+    from baddns.lib import httpmanager as _httpmanager
+
+    monkeypatch.setattr(_httpmanager, "BlastHTTP", lambda *a, **k: mock_http)
+
+    mock_http.add_response(
         url="http://bad.dns/",
-        status_code=200,
-        text="<h1>Oops! We couldn&#8217;t find that page.</h1>",
+        status=200,
+        body="<h1>Oops! We couldn&#8217;t find that page.</h1>",
     )
 
     cli.main()
@@ -83,8 +87,7 @@ def test_cli_cname_http(monkeypatch, capsys, mocker, httpx_mock, configure_mock_
     assert "Bigcartel Takeover Detection" in captured.out
 
 
-@pytest.mark.httpx_mock(assert_all_requests_were_expected=False)
-def test_cli_direct(monkeypatch, capsys, mocker, httpx_mock, configure_mock_resolver):
+def test_cli_direct(monkeypatch, capsys, mocker, mock_http, configure_mock_resolver):
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -98,10 +101,16 @@ def test_cli_direct(monkeypatch, capsys, mocker, httpx_mock, configure_mock_reso
     mocker.patch("baddns.cli.Client", return_value=mock_resolver)
     mocker.patch("baddns.lib.dnsmanager.Client", return_value=mock_resolver)
 
-    httpx_mock.add_response(
+    # CLI doesn't expose http_client injection; patch default BlastHTTP() in
+    # the one spot this module path reaches (HttpManager) so our mock takes over.
+    from baddns.lib import httpmanager as _httpmanager
+
+    monkeypatch.setattr(_httpmanager, "BlastHTTP", lambda *a, **k: mock_http)
+
+    mock_http.add_response(
         url="http://bad.dns/",
-        status_code=200,
-        text="<li>BucketName: bad.dns</li>The specified bucket does not exist",
+        status=200,
+        body="<li>BucketName: bad.dns</li>The specified bucket does not exist",
     )
 
     cli.main()
