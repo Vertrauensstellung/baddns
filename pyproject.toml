@@ -15,7 +15,7 @@ dependencies = [
     "tldextract>=5.1.1",
     "python-dateutil==2.9.0.post0",
     "blasthttp>=0.2.0",
-    "cloudcheck>=9,<10",
+    "cloudcheck>=10,<11",
 ]
 
 [project.urls]
