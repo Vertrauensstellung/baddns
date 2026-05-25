@@ -99,15 +99,16 @@ class BadDNS_ns(BadDNS_base):
                         )
                         return findings
             # Check negative signatures before falling back to generic
-            for sig in self.signatures:
-                if sig.signature["mode"] == "dns_nosoa" and sig.signature.get("negative_signature", False):
-                    sig_nameservers = [ns for ns in sig.signature["identifiers"]["nameservers"]]
-                    r = self.get_substring_matches(target_nameservers, sig_nameservers)
-                    if r:
-                        log.debug(
-                            f"Negative signature match [{sig.signature['service_name']}] for nameservers {', '.join(target_nameservers)}, suppressing generic finding"
-                        )
-                        return findings
+            if not self.disable_negative_signatures:
+                for sig in self.signatures:
+                    if sig.signature["mode"] == "dns_nosoa" and sig.signature.get("negative_signature", False):
+                        sig_nameservers = [ns for ns in sig.signature["identifiers"]["nameservers"]]
+                        r = self.get_substring_matches(target_nameservers, sig_nameservers)
+                        if r:
+                            log.debug(
+                                f"Negative signature match [{sig.signature['service_name']}] for nameservers {', '.join(target_nameservers)}, suppressing generic finding"
+                            )
+                            return findings
             log.debug(
                 f"No signature found, falling back to report generic dangling NS record for nameservers: [{', '.join(target_nameservers)}]]"
             )
