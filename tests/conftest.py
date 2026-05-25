@@ -44,6 +44,26 @@ def cached_suffix_list(fs):
     yield
 
 
+# When pyfakefs is active, tldextract's HTTPS fetch of the public suffix list
+# tries to read certifi's cacert.pem and fails with OSError (path not in fake fs).
+# That OSError is not caught by tldextract's snapshot fallback, which only catches
+# requests.exceptions.RequestException. Exposing the real cacert.pem lets the
+# fetch fail at the network layer instead, so the bundled snapshot is used.
+@pytest.fixture(autouse=True)
+def _expose_certifi_to_pyfakefs(request):
+    if "fs" not in request.fixturenames:
+        yield
+        return
+    fs = request.getfixturevalue("fs")
+    try:
+        import certifi
+
+        fs.add_real_file(certifi.where(), read_only=True)
+    except (ImportError, FileExistsError, OSError):
+        pass
+    yield
+
+
 @pytest.fixture()
 def configure_mock_resolver(monkeypatch):
     def mock_ns_trace_method_generator(return_list):
