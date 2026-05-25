@@ -110,6 +110,7 @@ async def execute_module(
     min_confidence=None,
     min_severity=None,
     disable_mx_gate=False,
+    disable_negative_signatures=False,
 ):
     findings = None
     try:
@@ -121,6 +122,7 @@ async def execute_module(
             cli=True,
             direct_mode=direct_mode,
             disable_mx_gate=disable_mx_gate,
+            disable_negative_signatures=disable_negative_signatures,
         )
     except BadDNSSignatureException as e:
         log.error(f"Error loading signatures: {e}")
@@ -194,7 +196,13 @@ async def _main():
         action="store_true",
         help="Run email-related modules (DMARC, SPF, MTA-STS misconfigurations) even when the domain has no MX records at the target or its registered domain.",
     )
-
+    
+    parser.add_argument(
+            "--disable-negative-signatures",
+        action="store_true",
+        help="Disable negative signatures so generic dangling CNAME/NS findings are still reported for known non-exploitable services.",
+    )
+      
     parser.add_argument("target", nargs="?", type=validate_target, help="subdomain to analyze")
     args = parser.parse_args()
 
@@ -269,6 +277,7 @@ async def _main():
             min_confidence=args.min_confidence,
             min_severity=args.min_severity,
             disable_mx_gate=args.disable_mx_gate,
+            disable_negative_signatures=args.disable_negative_signatures,
         )
 
 

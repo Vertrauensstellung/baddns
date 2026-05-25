@@ -139,6 +139,36 @@ async def test_ns_nosoa_generic_with_negative_loaded(fs, configure_mock_resolver
 
 
 @pytest.mark.asyncio
+async def test_ns_nosoa_negative_signature_disabled(fs, configure_mock_resolver):
+    """With disable_negative_signatures, generic finding fires even when negative signature matches."""
+    mock_data = {"bad.dns": {"NS": ["pdns1.ultradns.net."]}, "_NXDOMAIN": ["baddns.azurewebsites.net"]}
+    mock_resolver = configure_mock_resolver(mock_data, mock_dnswalk_data=["pdns1.ultradns.net"])
+
+    target = "bad.dns"
+    mock_signature_load(fs, "dnsreaper_wordpress_com_ns.yml")
+    mock_signature_load(fs, "negative_ultradns_ns.yml")
+    signatures = load_signatures("/tmp/signatures")
+    baddns_ns = BadDNS_ns(target, signatures=signatures, dns_client=mock_resolver, disable_negative_signatures=True)
+
+    findings = None
+    if await baddns_ns.dispatch():
+        findings = baddns_ns.analyze()
+
+    assert findings
+    expected = {
+        "target": "bad.dns",
+        "description": "Dangling NS Records (NS records without SOA)",
+        "confidence": "LOW",
+        "severity": "MEDIUM",
+        "signature": "GENERIC",
+        "indicator": "DNSWalk Analysis",
+        "trigger": "pdns1.ultradns.net",
+        "module": "NS",
+    }
+    assert any(expected == finding.to_dict() for finding in findings)
+
+
+@pytest.mark.asyncio
 async def test_ns_label_too_long(fs, configure_mock_resolver):
     mock_data = {}
     mock_resolver = configure_mock_resolver(mock_data)
