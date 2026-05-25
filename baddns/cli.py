@@ -196,13 +196,13 @@ async def _main():
         action="store_true",
         help="Run email-related modules (DMARC, SPF, MTA-STS misconfigurations) even when the domain has no MX records at the target or its registered domain.",
     )
-    
+
     parser.add_argument(
-            "--disable-negative-signatures",
+        "--disable-negative-signatures",
         action="store_true",
         help="Disable negative signatures so generic dangling CNAME/NS findings are still reported for known non-exploitable services.",
     )
-      
+
     parser.add_argument("target", nargs="?", type=validate_target, help="subdomain to analyze")
     args = parser.parse_args()
 
