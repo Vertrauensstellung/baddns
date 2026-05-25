@@ -5,6 +5,7 @@ Check subdomains for subdomain takeovers and other DNS tomfoolery
 ![License](https://img.shields.io/badge/license-GPLv3-f126ea.svg)
 [![tests](https://github.com/blacklanternsecurity/baddns/actions/workflows/tests.yaml/badge.svg)](https://github.com/blacklanternsecurity/baddns/actions/workflows/tests.yaml)
 [![codecov](https://codecov.io/gh/blacklanternsecurity/baddns/branch/main/graph/badge.svg)](https://codecov.io/gh/blacklanternsecurity/baddns)
+[![PyPI](https://img.shields.io/pypi/v/baddns)](https://pypi.org/project/baddns)
 [![Pypi Downloads](https://img.shields.io/pypi/dm/baddns)](https://pypi.org/project/baddns)
 
 <p align="left"><img width="300" height="300" src="https://github.com/blacklanternsecurity/baddns/assets/24899338/2ca1fe25-e834-4df8-8b02-8bf8f60f6e31"></p>
