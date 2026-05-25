@@ -109,6 +109,7 @@ async def execute_module(
     direct_mode=False,
     min_confidence=None,
     min_severity=None,
+    disable_mx_gate=False,
 ):
     findings = None
     try:
@@ -119,6 +120,7 @@ async def execute_module(
             dns_client=dns_client,
             cli=True,
             direct_mode=direct_mode,
+            disable_mx_gate=disable_mx_gate,
         )
     except BadDNSSignatureException as e:
         log.error(f"Error loading signatures: {e}")
@@ -185,6 +187,12 @@ async def _main():
         "--min-severity",
         type=validate_severity,
         help="Minimum severity level to report. Levels: CRITICAL, HIGH, MEDIUM, LOW (exclude INFO)",
+    )
+
+    parser.add_argument(
+        "--disable-mx-gate",
+        action="store_true",
+        help="Run email-related modules (DMARC, SPF, MTA-STS misconfigurations) even when the domain has no MX records at the target or its registered domain.",
     )
 
     parser.add_argument("target", nargs="?", type=validate_target, help="subdomain to analyze")
@@ -260,6 +268,7 @@ async def _main():
             direct_mode=direct_mode,
             min_confidence=args.min_confidence,
             min_severity=args.min_severity,
+            disable_mx_gate=args.disable_mx_gate,
         )
 
 
