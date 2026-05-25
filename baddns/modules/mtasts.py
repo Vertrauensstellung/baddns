@@ -3,7 +3,7 @@ import fnmatch
 
 from blasthttp import BlastHTTP
 
-from baddns.base import BadDNS_base
+from baddns.lib.email_base import BadDNS_email_base
 from baddns.lib.dnsmanager import DNSManager
 from baddns.lib.httpmanager import USER_AGENT
 from baddns.lib.whoismanager import WhoisManager
@@ -13,7 +13,7 @@ from baddns.modules.cname import BadDNS_cname
 log = logging.getLogger(__name__)
 
 
-class BadDNS_mtasts(BadDNS_base):
+class BadDNS_mtasts(BadDNS_email_base):
     name = "MTA-STS"
     description = "Check for MTA-STS misconfigurations and dangling mta-sts subdomains"
 
@@ -33,6 +33,7 @@ class BadDNS_mtasts(BadDNS_base):
         self.policy_error = None
         self.mx_whois_results = {}
         self.mta_sts_host = f"mta-sts.{target}"
+        self._has_mx = None
 
     async def _dispatch(self):
         # Step 1: Check for _mta-sts TXT record
@@ -135,6 +136,9 @@ class BadDNS_mtasts(BadDNS_base):
                 await whois_mgr.dispatchWHOIS()
                 self.mx_whois_results[mx_entry] = whois_mgr
 
+        # Cache MX presence for analyze() to gate misconfig-only findings
+        self._has_mx = await self.has_email_infra()
+
         return True
 
     @staticmethod
@@ -186,14 +190,19 @@ class BadDNS_mtasts(BadDNS_base):
     def analyze(self):
         findings = []
 
-        # Finding 1: Dangling mta-sts subdomain via CNAME delegation
+        # Finding 1: Dangling mta-sts subdomain via CNAME delegation — runs
+        # regardless of MX presence; this is a takeover vector independent of mail flow.
         if self.cname_findings_direct:
             findings.extend(self._convert_cname_findings(self.cname_findings_direct))
         if self.cname_findings:
             findings.extend(self._convert_cname_findings(self.cname_findings))
 
+        # Misconfig findings (orphaned TXT, policy/MX mismatch) only matter if mail
+        # actually flows. Skip them when the domain has no MX (gate honors disable_mx_gate).
+        emit_misconfig = self.disable_mx_gate or self._has_mx
+
         # Finding 2: Orphaned TXT record with unreachable policy
-        if self.policy_error and not self.cname_findings_direct and not self.cname_findings:
+        if emit_misconfig and self.policy_error and not self.cname_findings_direct and not self.cname_findings:
             findings.append(
                 Finding(
                     {
@@ -212,8 +221,8 @@ class BadDNS_mtasts(BadDNS_base):
         if self.policy:
             actual_mx = self.mx_dnsmanager.answers.get("MX") or []
 
-            # Finding 3: Policy MX mismatch (only in enforce mode)
-            if self.policy.get("mode") == "enforce" and actual_mx:
+            # Finding 3: Policy MX mismatch (only in enforce mode) — gated on MX presence
+            if emit_misconfig and self.policy.get("mode") == "enforce" and actual_mx:
                 unmatched = []
                 for mx_host in actual_mx:
                     if not any(self._mx_matches(pattern, mx_host) for pattern in self.policy["mx"]):

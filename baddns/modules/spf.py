@@ -1,4 +1,4 @@
-from baddns.base import BadDNS_base
+from baddns.lib.email_base import BadDNS_email_base
 from baddns.lib.dnsmanager import DNSManager
 from baddns.lib.whoismanager import WhoisManager
 from baddns.lib.findings import Finding
@@ -9,7 +9,7 @@ import tldextract
 log = logging.getLogger(__name__)
 
 
-class BadDNS_spf(BadDNS_base):
+class BadDNS_spf(BadDNS_email_base):
     name = "SPF"
     description = "Check for missing or misconfigured SPF records and hijackable include/redirect domains"
     skip_cloud_targets = True
@@ -93,6 +93,8 @@ class BadDNS_spf(BadDNS_base):
         return result
 
     async def _dispatch(self):
+        if await self.mx_gate_skips():
+            return False
         await self.target_dnsmanager.dispatchDNS(omit_types=["A", "AAAA", "CNAME", "NS", "SOA", "MX", "NSEC"])
         txt_records = self.target_dnsmanager.answers["TXT"]
 

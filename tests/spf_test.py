@@ -65,7 +65,7 @@ async def test_spf_no_txt_records(configure_mock_resolver):
     mock_data = {}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     assert len(findings) == 1
@@ -82,7 +82,7 @@ async def test_spf_txt_exists_but_no_spf(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": ["v=DMARC1; p=reject"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     assert len(findings) == 1
@@ -94,7 +94,7 @@ async def test_spf_plus_all(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": ["v=spf1 +all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     indicators = [f.to_dict()["indicator"] for f in findings]
@@ -107,7 +107,7 @@ async def test_spf_bare_all_implicit_plus(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": ["v=spf1 all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     indicators = [f.to_dict()["indicator"] for f in findings]
@@ -119,7 +119,7 @@ async def test_spf_neutral_all(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": ["v=spf1 ?all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     indicators = [f.to_dict()["indicator"] for f in findings]
@@ -133,7 +133,7 @@ async def test_spf_softfail_all_no_finding(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": ["v=spf1 ~all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     indicators = [f.to_dict()["indicator"] for f in findings]
@@ -147,7 +147,7 @@ async def test_spf_hardfail_all_no_finding(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": ["v=spf1 -all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     assert len(findings) == 0
@@ -158,7 +158,7 @@ async def test_spf_multiple_records(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": ["v=spf1 -all", "v=spf1 include:example.com -all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     indicators = [f.to_dict()["indicator"] for f in findings]
@@ -172,7 +172,7 @@ async def test_spf_dns_lookup_exceeds_10(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": [f"v=spf1 {includes} -all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     indicators = [f.to_dict()["indicator"] for f in findings]
@@ -186,7 +186,7 @@ async def test_spf_dns_lookup_at_10_no_finding(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": [f"v=spf1 {includes} -all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     indicators = [f.to_dict()["indicator"] for f in findings]
@@ -206,7 +206,7 @@ async def test_spf_mixed_mechanisms_counting(configure_mock_resolver):
     }
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     # 2 includes + a + mx + ptr + exists + redirect = 7
     assert m.parsed_spf["dns_lookup_count"] == 7
@@ -218,7 +218,7 @@ async def test_spf_fully_compliant(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": ["v=spf1 include:_spf.google.com ~all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     assert len(findings) == 0
@@ -230,7 +230,7 @@ async def test_spf_case_insensitive(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": ["V=SPF1 -all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     assert len(findings) == 0
@@ -242,7 +242,7 @@ async def test_spf_no_all_mechanism_no_finding(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": ["v=spf1 include:example.com"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     indicators = [f.to_dict()["indicator"] for f in findings]
@@ -256,7 +256,7 @@ async def test_spf_qualified_mechanisms_parsed(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": ["v=spf1 ~include:example.com -mx -all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     assert m.parsed_spf["includes"] == ["example.com"]
     assert m.parsed_spf["dns_lookup_count"] == 2  # include + mx
@@ -268,7 +268,7 @@ async def test_spf_empty_include_no_crash(configure_mock_resolver):
     mock_data = {"bad.com": {"TXT": ["v=spf1 include: -all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     assert not any(f.to_dict()["indicator"] == "Whois Data" for f in findings)
@@ -285,7 +285,7 @@ async def test_spf_include_unregistered(fs, mock_dispatch_whois, configure_mock_
         mock_resolver = configure_mock_resolver(mock_data)
 
         target = "bad.dns"
-        m = BadDNS_spf(target, dns_client=mock_resolver)
+        m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
         findings = None
         if await m.dispatch():
             findings = m.analyze()
@@ -312,7 +312,7 @@ async def test_spf_include_expired(fs, mock_dispatch_whois, configure_mock_resol
         mock_resolver = configure_mock_resolver(mock_data)
 
         target = "bad.dns"
-        m = BadDNS_spf(target, dns_client=mock_resolver)
+        m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
         findings = None
         if await m.dispatch():
             findings = m.analyze()
@@ -339,7 +339,7 @@ async def test_spf_redirect_unregistered(fs, mock_dispatch_whois, configure_mock
         mock_resolver = configure_mock_resolver(mock_data)
 
         target = "bad.dns"
-        m = BadDNS_spf(target, dns_client=mock_resolver)
+        m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
         findings = None
         if await m.dispatch():
             findings = m.analyze()
@@ -366,7 +366,7 @@ async def test_spf_include_registered_no_finding(fs, mock_dispatch_whois, config
         mock_resolver = configure_mock_resolver(mock_data)
 
         target = "bad.dns"
-        m = BadDNS_spf(target, dns_client=mock_resolver)
+        m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
         findings = None
         if await m.dispatch():
             findings = m.analyze()
@@ -383,7 +383,7 @@ async def test_spf_combined_policy_and_takeover(fs, mock_dispatch_whois, configu
         mock_resolver = configure_mock_resolver(mock_data)
 
         target = "bad.dns"
-        m = BadDNS_spf(target, dns_client=mock_resolver)
+        m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
         findings = None
         if await m.dispatch():
             findings = m.analyze()
@@ -403,7 +403,7 @@ async def test_spf_subdomain_inherits_from_org(configure_mock_resolver):
     mock_data = {"example.com": {"TXT": ["v=spf1 include:_spf.google.com -all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "www.example.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     indicators = [f.to_dict()["indicator"] for f in findings]
@@ -417,7 +417,7 @@ async def test_spf_subdomain_inherits_policy_issues(configure_mock_resolver):
     mock_data = {"example.com": {"TXT": ["v=spf1 +all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "www.example.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     indicators = [f.to_dict()["indicator"] for f in findings]
@@ -431,7 +431,7 @@ async def test_spf_subdomain_no_org_record(configure_mock_resolver):
     mock_data = {}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "www.example.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     assert len(findings) == 1
@@ -447,7 +447,7 @@ async def test_spf_subdomain_own_record_overrides(configure_mock_resolver):
     }
     mock_resolver = configure_mock_resolver(mock_data)
     target = "sub.example.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     indicators = [f.to_dict()["indicator"] for f in findings]
@@ -460,7 +460,7 @@ async def test_spf_deep_subdomain_inherits(configure_mock_resolver):
     mock_data = {"example.com": {"TXT": ["v=spf1 include:_spf.google.com -all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "a.b.example.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
     findings = m.analyze()
     assert len(findings) == 0
@@ -475,7 +475,7 @@ async def test_spf_subdomain_inherits_takeover(fs, mock_dispatch_whois, configur
         mock_resolver = configure_mock_resolver(mock_data)
 
         target = "www.example.com"
-        m = BadDNS_spf(target, dns_client=mock_resolver)
+        m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
         findings = None
         if await m.dispatch():
             findings = m.analyze()
@@ -508,7 +508,7 @@ async def test_spf_restricted_tld_no_whois_finding(
         mock_resolver = configure_mock_resolver(mock_data)
 
         target = "dot.gov"
-        m = BadDNS_spf(target, dns_client=mock_resolver)
+        m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
         findings = None
         if await m.dispatch():
             findings = m.analyze()
@@ -528,7 +528,7 @@ async def test_spf_self_referential_include_skipped(configure_mock_resolver):
     mock_resolver = configure_mock_resolver(mock_data)
 
     target = "dot.gov"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
 
     # _ip4spf.dot.gov has base domain dot.gov == target, so WHOIS should be skipped
@@ -544,7 +544,7 @@ async def test_spf_self_referential_subdomain_include_skipped(configure_mock_res
     mock_resolver = configure_mock_resolver(mock_data)
 
     target = "www.cbi.nhtsa.dot.gov"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     assert await m.dispatch()
 
     # _ip4spf.dot.gov is self-referential (base = dot.gov = org domain), should be skipped
@@ -562,9 +562,56 @@ async def test_spf_cloud_target_skipped(configure_mock_resolver):
     mock_data = {}
     mock_resolver = configure_mock_resolver(mock_data)
     target = "bad.com"
-    m = BadDNS_spf(target, dns_client=mock_resolver)
+    m = BadDNS_spf(target, dns_client=mock_resolver, disable_mx_gate=True)
     mock_cc = MagicMock()
     mock_cc.lookup = AsyncMock(return_value=[{"name": "SomeCloud", "tags": ["cloud"]}])
     with patch("baddns.base.CloudCheck", return_value=mock_cc):
         result = await m.dispatch()
     assert result is False
+
+
+# --- MX gate tests ---
+
+
+@pytest.mark.asyncio
+async def test_spf_mx_gate_skips_when_no_mx(configure_mock_resolver):
+    """With the MX gate on (default), SPF skips when neither target nor apex has MX."""
+    mock_data = {"bad.com": {"TXT": ["v=spf1 -all"]}}
+    mock_resolver = configure_mock_resolver(mock_data)
+    m = BadDNS_spf("bad.com", dns_client=mock_resolver)
+    assert await m.dispatch() is False
+
+
+@pytest.mark.asyncio
+async def test_spf_mx_gate_runs_with_target_mx(configure_mock_resolver):
+    mock_data = {
+        "sub.bad.com": {"MX": ["mail.bad.com."], "TXT": ["v=spf1 +all"]},
+    }
+    mock_resolver = configure_mock_resolver(mock_data)
+    m = BadDNS_spf("sub.bad.com", dns_client=mock_resolver)
+    assert await m.dispatch() is True
+    findings = m.analyze()
+    assert any(f.to_dict()["indicator"] == "+all" for f in findings)
+
+
+@pytest.mark.asyncio
+async def test_spf_mx_gate_runs_with_apex_mx(configure_mock_resolver):
+    mock_data = {
+        "bad.com": {"MX": ["mail.bad.com."]},
+        "sub.bad.com": {"TXT": ["v=spf1 +all"]},
+    }
+    mock_resolver = configure_mock_resolver(mock_data)
+    m = BadDNS_spf("sub.bad.com", dns_client=mock_resolver)
+    assert await m.dispatch() is True
+    findings = m.analyze()
+    assert any(f.to_dict()["indicator"] == "+all" for f in findings)
+
+
+@pytest.mark.asyncio
+async def test_spf_mx_gate_disabled_runs_without_mx(configure_mock_resolver):
+    mock_data = {"bad.com": {"TXT": ["v=spf1 +all"]}}
+    mock_resolver = configure_mock_resolver(mock_data)
+    m = BadDNS_spf("bad.com", dns_client=mock_resolver, disable_mx_gate=True)
+    assert await m.dispatch() is True
+    findings = m.analyze()
+    assert any(f.to_dict()["indicator"] == "+all" for f in findings)
