@@ -48,7 +48,7 @@ Installation is simple, since BadDNS is packaged as a pypi package. Simply use p
 BadDNS is also [BBOT](https://github.com/blacklanternsecurity/bbot) module, and if you are trying to run it at any kind of scale, this is the preferred way to use it. If you wanted to use BBOT to enumerate as many subdomains as possible and run BadDNS against all of them, you could use this command:
 
 ```
-bbot -m baddns -f subdomain-enum target-base-domain.com
+bbot -m baddns -f subdomain-enum -t target-base-domain.com
 ```
 
 No installation necessary here, BBOT's dependency management system will take care of that for you.
