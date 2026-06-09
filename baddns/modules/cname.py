@@ -104,7 +104,7 @@ class BadDNS_cname(BadDNS_base):
                             )
                             break
             # Check negative signatures before falling back to generic
-            if not signature_match:
+            if not signature_match and not self.disable_negative_signatures:
                 for sig in self.signatures:
                     if sig.signature["mode"] == "dns_nxdomain" and sig.signature.get("negative_signature", False):
                         sig_cnames = [c["value"] for c in sig.signature["identifiers"]["cnames"]]

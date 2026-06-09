@@ -45,7 +45,7 @@ async def test_mtasts_no_txt_record(fs, mock_dispatch_whois, configure_mock_reso
     mock_data = {"bad.dns": {}}
     mock_resolver = configure_mock_resolver(mock_data)
 
-    baddns_mtasts = BadDNS_mtasts("bad.dns", dns_client=mock_resolver, signatures=[])
+    baddns_mtasts = BadDNS_mtasts("bad.dns", dns_client=mock_resolver, signatures=[], disable_mx_gate=True)
     result = await baddns_mtasts.dispatch()
     await baddns_mtasts.cleanup()
 
@@ -58,7 +58,7 @@ async def test_mtasts_txt_exists_no_sts(fs, mock_dispatch_whois, configure_mock_
     mock_data = {"_mta-sts.bad.dns": {"TXT": ["v=spf1 include:example.com ~all"]}}
     mock_resolver = configure_mock_resolver(mock_data)
 
-    baddns_mtasts = BadDNS_mtasts("bad.dns", dns_client=mock_resolver, signatures=[])
+    baddns_mtasts = BadDNS_mtasts("bad.dns", dns_client=mock_resolver, signatures=[], disable_mx_gate=True)
     result = await baddns_mtasts.dispatch()
     await baddns_mtasts.cleanup()
 
@@ -88,7 +88,9 @@ async def test_mtasts_dangling_cname_nxdomain(fs, mock_dispatch_whois, mock_http
     mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
     signatures = load_signatures("/tmp/signatures")
 
-    baddns_mtasts = BadDNS_mtasts("bad.dns", signatures=signatures, dns_client=mock_resolver, http_client=mock_http)
+    baddns_mtasts = BadDNS_mtasts(
+        "bad.dns", signatures=signatures, dns_client=mock_resolver, http_client=mock_http, disable_mx_gate=True
+    )
     findings = None
     if await baddns_mtasts.dispatch():
         findings = baddns_mtasts.analyze()
@@ -123,7 +125,9 @@ async def test_mtasts_policy_unreachable(fs, mock_dispatch_whois, mock_http, con
         status=404,
     )
 
-    baddns_mtasts = BadDNS_mtasts("bad.dns", signatures=[], dns_client=mock_resolver, http_client=mock_http)
+    baddns_mtasts = BadDNS_mtasts(
+        "bad.dns", signatures=[], dns_client=mock_resolver, http_client=mock_http, disable_mx_gate=True
+    )
     findings = None
     if await baddns_mtasts.dispatch():
         findings = baddns_mtasts.analyze()
@@ -159,7 +163,9 @@ async def test_mtasts_mx_mismatch_enforce(fs, mock_dispatch_whois, mock_http, co
         body=MISMATCHED_POLICY,
     )
 
-    baddns_mtasts = BadDNS_mtasts("bad.dns", signatures=[], dns_client=mock_resolver, http_client=mock_http)
+    baddns_mtasts = BadDNS_mtasts(
+        "bad.dns", signatures=[], dns_client=mock_resolver, http_client=mock_http, disable_mx_gate=True
+    )
     findings = None
     if await baddns_mtasts.dispatch():
         findings = baddns_mtasts.analyze()
@@ -192,7 +198,9 @@ async def test_mtasts_mx_mismatch_testing_mode(fs, mock_dispatch_whois, mock_htt
         body=TESTING_POLICY,
     )
 
-    baddns_mtasts = BadDNS_mtasts("bad.dns", signatures=[], dns_client=mock_resolver, http_client=mock_http)
+    baddns_mtasts = BadDNS_mtasts(
+        "bad.dns", signatures=[], dns_client=mock_resolver, http_client=mock_http, disable_mx_gate=True
+    )
     findings = None
     if await baddns_mtasts.dispatch():
         findings = baddns_mtasts.analyze()
@@ -222,7 +230,9 @@ async def test_mtasts_dangling_mx_domain_unregistered(
         body=POLICY_WITH_DANGLING_MX,
     )
 
-    baddns_mtasts = BadDNS_mtasts("bad.dns", signatures=[], dns_client=mock_resolver, http_client=mock_http)
+    baddns_mtasts = BadDNS_mtasts(
+        "bad.dns", signatures=[], dns_client=mock_resolver, http_client=mock_http, disable_mx_gate=True
+    )
     findings = None
     if await baddns_mtasts.dispatch():
         findings = baddns_mtasts.analyze()
@@ -241,6 +251,89 @@ async def test_mtasts_dangling_mx_domain_unregistered(
 
 
 @pytest.mark.asyncio
+async def test_mtasts_mx_gate_skips_orphaned_txt(fs, mock_dispatch_whois, mock_http, configure_mock_resolver):
+    """With MX gate on and no MX, orphaned-TXT finding should be suppressed."""
+    mock_data = {
+        "_mta-sts.bad.dns": {"TXT": ["v=STSv1; id=abc123"]},
+        "mta-sts.bad.dns": {"A": ["1.2.3.4"]},
+    }
+    mock_resolver = configure_mock_resolver(mock_data)
+    mock_http.add_response(url="https://mta-sts.bad.dns/.well-known/mta-sts.txt", status=404)
+
+    baddns_mtasts = BadDNS_mtasts("bad.dns", signatures=[], dns_client=mock_resolver, http_client=mock_http)
+    findings = []
+    if await baddns_mtasts.dispatch():
+        findings = baddns_mtasts.analyze()
+    await baddns_mtasts.cleanup()
+
+    assert not any("Orphaned MTA-STS TXT" in f.to_dict()["description"] for f in findings)
+
+
+@pytest.mark.asyncio
+async def test_mtasts_mx_gate_skips_mismatch(fs, mock_dispatch_whois, mock_http, configure_mock_resolver):
+    """With MX gate on and no MX, MX-mismatch finding should be suppressed."""
+    mock_data = {
+        "_mta-sts.bad.dns": {"TXT": ["v=STSv1; id=abc123"]},
+        "mta-sts.bad.dns": {"A": ["1.2.3.4"]},
+    }
+    mock_resolver = configure_mock_resolver(mock_data)
+    mock_http.add_response(url="https://mta-sts.bad.dns/.well-known/mta-sts.txt", status=200, body=MISMATCHED_POLICY)
+
+    baddns_mtasts = BadDNS_mtasts("bad.dns", signatures=[], dns_client=mock_resolver, http_client=mock_http)
+    findings = []
+    if await baddns_mtasts.dispatch():
+        findings = baddns_mtasts.analyze()
+    await baddns_mtasts.cleanup()
+
+    assert not any("MX mismatch" in f.to_dict()["description"] for f in findings)
+
+
+@pytest.mark.asyncio
+async def test_mtasts_mx_gate_keeps_dangling_subdomain(fs, mock_dispatch_whois, mock_http, configure_mock_resolver):
+    """Dangling mta-sts.* subdomain takeover finding must run even without MX."""
+    mock_data = {
+        "_mta-sts.bad.dns": {"TXT": ["v=STSv1; id=abc123"]},
+        "mta-sts.bad.dns": {"CNAME": ["baddns-sts.azurewebsites.net"]},
+        "_NXDOMAIN": ["baddns-sts.azurewebsites.net"],
+    }
+    mock_resolver = configure_mock_resolver(mock_data)
+    mock_signature_load(fs, "nucleitemplates_azure-takeover-detection.yml")
+    signatures = load_signatures("/tmp/signatures")
+
+    baddns_mtasts = BadDNS_mtasts("bad.dns", signatures=signatures, dns_client=mock_resolver, http_client=mock_http)
+    findings = []
+    if await baddns_mtasts.dispatch():
+        findings = baddns_mtasts.analyze()
+    await baddns_mtasts.cleanup()
+
+    assert any("Dangling mta-sts subdomain" in f.to_dict()["description"] for f in findings)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_dispatch_whois", [mock_whois_unregistered], indirect=True)
+async def test_mtasts_mx_gate_keeps_policy_mx_whois(
+    fs, mock_dispatch_whois, mock_http, configure_mock_resolver, cached_suffix_list
+):
+    """WHOIS-based policy MX takeover finding must run even without MX (still a takeover)."""
+    mock_data = {
+        "_mta-sts.bad.dns": {"TXT": ["v=STSv1; id=abc123"]},
+        "mta-sts.bad.dns": {"A": ["1.2.3.4"]},
+    }
+    mock_resolver = configure_mock_resolver(mock_data)
+    mock_http.add_response(
+        url="https://mta-sts.bad.dns/.well-known/mta-sts.txt", status=200, body=POLICY_WITH_DANGLING_MX
+    )
+
+    baddns_mtasts = BadDNS_mtasts("bad.dns", signatures=[], dns_client=mock_resolver, http_client=mock_http)
+    findings = []
+    if await baddns_mtasts.dispatch():
+        findings = baddns_mtasts.analyze()
+    await baddns_mtasts.cleanup()
+
+    assert any("MTA-STS policy mx domain" in f.to_dict()["description"] for f in findings)
+
+
+@pytest.mark.asyncio
 async def test_mtasts_all_correct(fs, mock_dispatch_whois, mock_http, configure_mock_resolver):
     """TXT exists, valid policy, everything correct -> no findings."""
     mock_data = {
@@ -256,7 +349,9 @@ async def test_mtasts_all_correct(fs, mock_dispatch_whois, mock_http, configure_
         body=VALID_POLICY,
     )
 
-    baddns_mtasts = BadDNS_mtasts("bad.dns", signatures=[], dns_client=mock_resolver, http_client=mock_http)
+    baddns_mtasts = BadDNS_mtasts(
+        "bad.dns", signatures=[], dns_client=mock_resolver, http_client=mock_http, disable_mx_gate=True
+    )
     findings = None
     if await baddns_mtasts.dispatch():
         findings = baddns_mtasts.analyze()

@@ -1,4 +1,4 @@
-from baddns.base import BadDNS_base
+from baddns.lib.email_base import BadDNS_email_base
 from baddns.lib.dnsmanager import DNSManager
 from baddns.lib.findings import Finding
 
@@ -8,7 +8,7 @@ import tldextract
 log = logging.getLogger(__name__)
 
 
-class BadDNS_dmarc(BadDNS_base):
+class BadDNS_dmarc(BadDNS_email_base):
     name = "DMARC"
     description = "Check for missing or misconfigured DMARC records"
     skip_cloud_targets = True
@@ -40,6 +40,8 @@ class BadDNS_dmarc(BadDNS_base):
         return tags
 
     async def _dispatch(self):
+        if await self.mx_gate_skips():
+            return False
         # Step 1: Check _dmarc.<target> (RFC 7489 Section 6.6.3)
         await self.target_dnsmanager.dispatchDNS(omit_types=["A", "AAAA", "CNAME", "NS", "SOA", "MX", "NSEC"])
         txt_records = self.target_dnsmanager.answers["TXT"]

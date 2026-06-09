@@ -25,6 +25,7 @@ class BadDNS_base:
         self.custom_nameservers = custom_nameservers
         self.parent_class = kwargs.get("parent_class", "self")
         self.cli = cli
+        self.disable_negative_signatures = kwargs.get("disable_negative_signatures", False)
 
     # hook to allow external manipulation of target assignment
     def set_target(self, target):
@@ -53,4 +54,15 @@ class BadDNS_base:
 
 
 def get_all_modules(*args, **kwargs):
-    return [m for m in BadDNS_base.__subclasses__()]
+    seen = []
+
+    def _walk(cls):
+        for sub in cls.__subclasses__():
+            # Only concrete modules have a `name` class attribute; intermediate
+            # bases like BadDNS_email_base do not.
+            if getattr(sub, "name", None) and sub not in seen:
+                seen.append(sub)
+            _walk(sub)
+
+    _walk(BadDNS_base)
+    return seen
